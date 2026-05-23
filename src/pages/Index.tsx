@@ -1,6 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import Icon from '@/components/ui/icon';
 
+const PRICE_URL = 'https://functions.poehali.dev/edb6f9af-247b-4bb4-8d67-4f7d5fdfd824';
+
+interface PriceItem {
+  id: number;
+  name: string;
+  price: number;
+  old_price: number | null;
+}
+
 const IMG = 'https://cdn.poehali.dev/projects/01f5da2c-a125-442e-8291-c45f919a20a4/files/2acee1f4-2c52-44aa-ab6d-4a128a92f1f9.jpg';
 
 const NAV = [
@@ -26,23 +35,7 @@ const SERVICES = [
   { num: '06', icon: 'MessageSquare', title: 'Консультация', desc: 'Поможем выбрать под задачу. Бесплатный расчёт по чертежу или смете.' },
 ];
 
-const OSB = [
-  { name: 'ОСБ-3 9мм (2500×1250)', price: 890, old: 960 },
-  { name: 'ОСБ-3 12мм (2500×1250)', price: 1150, old: 1250 },
-  { name: 'ОСБ-3 15мм (2500×1250)', price: 1390, old: 1490 },
-  { name: 'ОСБ-3 18мм (2500×1250)', price: 1650, old: 1790 },
-  { name: 'ОСБ-3 22мм (2500×1250)', price: 1990, old: 2150 },
-];
 
-const FANERA = [
-  { name: 'Фанера 4мм FK (1525×1525)', price: 580, old: 650 },
-  { name: 'Фанера 6мм FK (1525×1525)', price: 720, old: 820 },
-  { name: 'Фанера 9мм FK (1525×1525)', price: 980, old: 1080 },
-  { name: 'Фанера 12мм ФСФ (1525×1525)', price: 1250, old: 1380 },
-  { name: 'Фанера 15мм ФСФ (1525×1525)', price: 1550, old: 1690 },
-  { name: 'Фанера 18мм ФСФ (1525×1525)', price: 1840, old: 2000 },
-  { name: 'Фанера 21мм ФСФ (1525×1525)', price: 2200, old: 2380 },
-];
 
 const PORTFOLIO = [
   { tag: 'ЖК', title: 'ЖК «Новые горизонты»', desc: '500 листов ФСФ 18мм для опалубки. Срок — 2 дня.' },
@@ -95,9 +88,22 @@ export default function Index() {
   const [form, setForm] = useState({ name: '', phone: '', mat: '', qty: '', note: '' });
   const [sent, setSent] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
+  const [priceData, setPriceData] = useState<{ osb: PriceItem[]; fanera: PriceItem[] }>({ osb: [], fanera: [] });
+  const [priceLoading, setPriceLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(PRICE_URL)
+      .then(r => r.json())
+      .then(data => {
+        const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+        setPriceData(parsed);
+      })
+      .finally(() => setPriceLoading(false));
+  }, []);
+
 
   const submit = (e: React.FormEvent) => { e.preventDefault(); setSent(true); };
-  const rows = tab === 'osb' ? OSB : FANERA;
+  const rows = tab === 'osb' ? priceData.osb : priceData.fanera;
 
   return (
     <div className="min-h-screen bg-[var(--b)] text-[var(--text)]" style={{ fontFamily: "'Montserrat', sans-serif" }}>
@@ -358,13 +364,18 @@ export default function Index() {
               <div className="text-[10px] tracking-widest uppercase text-[var(--muted)] font-bold w-32 text-right">Цена ₽</div>
             </div>
 
-            {rows.map((r, i) => (
-              <div key={i} className="price-row grid grid-cols-[1fr_auto_auto] px-6 py-4 border-b border-[var(--g3)] last:border-0 items-center">
+            {priceLoading && (
+              <div className="px-6 py-8 text-center text-xs text-[var(--muted)] tracking-widest uppercase">
+                Загрузка...
+              </div>
+            )}
+            {rows.map((r) => (
+              <div key={r.id} className="price-row grid grid-cols-[1fr_auto_auto] px-6 py-4 border-b border-[var(--g3)] last:border-0 items-center">
                 <div className="text-sm font-medium">{r.name}</div>
                 <div className="text-xs text-[var(--muted)] w-20 text-center">лист</div>
                 <div className="w-32 text-right">
                   <span className="font-display text-xl text-[var(--y)]">{r.price.toLocaleString('ru')}</span>
-                  <span className="text-[10px] text-[var(--muted)] line-through ml-2">{r.old}</span>
+                  {r.old_price && <span className="text-[10px] text-[var(--muted)] line-through ml-2">{r.old_price}</span>}
                 </div>
               </div>
             ))}
